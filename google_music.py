@@ -3,8 +3,8 @@ import logging
 import os
 from typing import Generator
 
-from gmusicapi import Mobileclient
-from gmusicapi.exceptions import InvalidDeviceId
+from gmusicapi import Mobileclient  # type: ignore
+from gmusicapi.exceptions import InvalidDeviceId  # type: ignore
 
 
 def _get_device_id_from_environment() -> str:

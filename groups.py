@@ -2,7 +2,7 @@
 import logging
 from typing import Dict, List, Optional
 
-from fuzzywuzzy.fuzz import partial_ratio
+from fuzzywuzzy.fuzz import partial_ratio  # type: ignore
 
 from cache import get_cached, store_cache, use_cache
 from songs import get_all_songs, summarise_song
