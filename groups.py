@@ -4,7 +4,7 @@ from itertools import combinations
 from typing import Dict, Generator, List, Optional, Tuple
 
 from fuzzywuzzy.fuzz import ratio  # type: ignore
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 from cache import get_cached, store_cache, use_cache
 from songs import get_all_songs, summarise_song
