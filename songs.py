@@ -21,9 +21,12 @@ def summarise_song(song: dict) -> str:
 
     artist = song["artist"]
     title = song["title"]
+    album = song["album"]
     duration_millis = int(song["durationMillis"])
     duration_seconds = duration_millis / 1000
     duration_minutes, seconds = divmod(duration_seconds, 60)
     hours, minutes = divmod(duration_minutes, 60)
 
-    return f"{artist} - {title} ({hours:02.0f}:{minutes:02.0f}:{seconds:02.0f})"
+    return (
+        f"{artist} - {album} - {title} [{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}]"
+    )
