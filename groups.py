@@ -4,8 +4,7 @@ from datetime import datetime
 from itertools import combinations
 from typing import Dict, Generator, List, Optional, Set, Tuple
 
-import keyboard
-from fuzzywuzzy.fuzz import ratio  # type: ignore
+from fuzzywuzzy.fuzz import partial_ratio  # type: ignore
 from gmusicapi import Mobileclient  # type: ignore
 from tqdm import tqdm  # type: ignore
 
@@ -38,7 +37,7 @@ class SongPair:
         if len(values) == 1:
             score = 100
         else:
-            score = ratio(*values)
+            score = partial_ratio(*values)
 
         return score
 
@@ -290,11 +289,9 @@ class SongGroup:
         print(f"Delete:")
         for song in self.get_discard_songs():
             print(f" - {summarise_song(song)}")
-
         while True:
-            print("Delete? (y/N)")
-            key = keyboard.read_key()
-            if key in ["n", "enter", "return"]:
+            key = input("Delete? (y/N)")
+            if key in ["n", ""]:
                 print("Not deleting.")
                 return False
             if key == "y":
