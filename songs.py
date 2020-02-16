@@ -19,6 +19,7 @@ def get_all_songs() -> List[dict]:
 def summarise_song(song: dict) -> str:
     """Return a string representation of a song."""
 
+    track = song["trackNumber"]
     artist = song["artist"]
     title = song["title"]
     album = song["album"]
@@ -26,7 +27,10 @@ def summarise_song(song: dict) -> str:
     duration_seconds = duration_millis / 1000
     duration_minutes, seconds = divmod(duration_seconds, 60)
     hours, minutes = divmod(duration_minutes, 60)
+    plays = song["playCount"]
 
     return (
-        f"{artist} - {album} - {title} [{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}]"
+        f"{track} - {artist} - {album} - {title} "
+        f"[{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}] "
+        f"({plays} plays)"
     )

@@ -1,9 +1,12 @@
 """Functions for acting with groups of songs."""
 import logging
+from datetime import datetime
 from itertools import combinations
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Set, Tuple
 
+import keyboard
 from fuzzywuzzy.fuzz import ratio  # type: ignore
+from gmusicapi import Mobileclient  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from cache import get_cached, store_cache, use_cache
@@ -17,10 +20,21 @@ class SongPair:
         self.song1 = song1
         self.song2 = song2
 
-    def get_score(self, key: str) -> int:
+    @property
+    def songs(self) -> List[dict]:
+        """Return all values."""
+
+        return [self.song1, self.song2]
+
+    def _get_values(self, key: str) -> Set[str]:
+        """Return values for key."""
+
+        return {song[key] for song in self.songs}
+
+    def _get_string_score(self, key: str) -> int:
         """Return how similar songs are by key out of 100."""
 
-        values = {self.song1[key], self.song2[key]}
+        values = self._get_values(key)
         if len(values) == 1:
             score = 100
         else:
@@ -29,28 +43,44 @@ class SongPair:
         return score
 
     @property
+    def track_score(self) -> int:
+        """Return the track score."""
+
+        values = self._get_values("trackNumber")
+        if len(values) == 1:
+            return 100
+        try:
+            int_values = {int(value) for value in values}
+        except TypeError:
+            pass
+        else:
+            if (len(int_values)) == 1:
+                return 50
+        return 0
+
+    @property
     def album_score(self) -> int:
         """Return the album score."""
 
-        return self.get_score("album")
+        return self._get_string_score("album")
 
     @property
     def album_artist_score(self) -> int:
         """Return the album artist score."""
 
-        return self.get_score("albumArtist")
+        return self._get_string_score("albumArtist")
 
     @property
     def artist_score(self) -> int:
         """Return the artist score."""
 
-        return self.get_score("artist")
+        return self._get_string_score("artist")
 
     @property
     def title_score(self) -> int:
         """Return the title score."""
 
-        return self.get_score("title")
+        return self._get_string_score("title")
 
     @property
     def duration_score(self) -> int:
@@ -65,7 +95,7 @@ class SongPair:
     def get_names_and_scores(self) -> Generator[Tuple[str, int], None, None]:
         """Return name and score for that name."""
 
-        score_names = ("album", "album_artist", "artist", "title", "duration")
+        score_names = ("track", "duration", "album", "album_artist", "artist", "title")
         for name in score_names:
             yield name, getattr(self, f"{name}_score")
 
@@ -222,6 +252,56 @@ class SongGroup:
         for song in self.group:
             yield song
 
+    def _combine_play_counts(self, api: Mobileclient) -> None:
+        """Combine play counts on to keep song."""
+
+        discard_songs = self.get_discard_songs()
+        extra_plays = sum(int(song["playCount"]) for song in discard_songs)
+        if not extra_plays:
+            return
+
+        keep_song = self.get_keep_song()
+        timestamps = [int(song["recentTimestamp"]) for song in self.group]
+        most_recent_timestamp = max(timestamps)
+        playtime = datetime.fromtimestamp(most_recent_timestamp / 10 ** 6)
+        api.increment_song_playcount(keep_song["id"], extra_plays, playtime=playtime)
+
+    def _delete_duplicates(self, api: Mobileclient) -> None:
+        """Delete duplicates."""
+
+        self._combine_play_counts(api)
+        discard_ids = [song["id"] for song in self.get_discard_songs()]
+        api.delete_songs(discard_ids)
+
+    def auto_manage(self, api: Mobileclient) -> bool:
+        """Automatically remove duplicates if the score is high enough."""
+
+        if self.get_similarity() < 100:
+            return False
+
+        self._delete_duplicates(api)
+        return True
+
+    def confirm_delete(self, api: Mobileclient) -> bool:
+        """Ask the user if we can delete."""
+
+        keep_song = self.get_keep_song()
+        print(f"Keep:\n - {summarise_song(keep_song)}")
+        print(f"Delete:")
+        for song in self.get_discard_songs():
+            print(f" - {summarise_song(song)}")
+
+        while True:
+            print("Delete? (y/N)")
+            key = keyboard.read_key()
+            if key in ["n", "enter", "return"]:
+                print("Not deleting.")
+                return False
+            if key == "y":
+                print("Deleting.")
+                self._delete_duplicates(api)
+                return True
+
 
 def summarise_similar(groups: List[List[dict]]):
     """Output similar songs."""
@@ -240,3 +320,14 @@ def summarise_similar(groups: List[List[dict]]):
         print("=" * 32)
 
     print(f"Total Groups: {len(have_similar)}")
+
+
+def delete_duplicates(groups: List[List[dict]], api: Mobileclient):
+    """Delete duplicate songs."""
+
+    song_groups = [SongGroup(group) for group in groups]
+    have_similar = [group for group in song_groups if len(group) > 1]
+
+    for group in have_similar:
+        if not group.auto_manage(api):
+            group.confirm_delete(api)
