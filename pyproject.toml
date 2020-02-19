@@ -10,6 +10,8 @@ gmusicapi = "^12.1"
 fuzzywuzzy = "^0.18.0"
 python-Levenshtein = {version = "^0.12.0", optional = true}
 tqdm = "^4.42"
+pick = "^0.6.7"
+windows-curses = {version = "^2.1", extras = ["windows"]}
 
 [tool.poetry.dev-dependencies]
 mypy = {version = "^0.761.0", allows-prereleases = true}
