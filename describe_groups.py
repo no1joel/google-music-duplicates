@@ -6,6 +6,8 @@ def print_groups():
     groups = get_cached("groups")
     if groups is None:
         groups = get_cached("partial_groups")
+    if groups is None:
+        raise Exception("Can't get groups")
     summarise_similar(groups)
 
 
